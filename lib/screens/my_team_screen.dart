@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/my_team_provider.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'player_screen.dart';
 
 class MyTeamScreen extends StatefulWidget {
@@ -12,6 +13,8 @@ class MyTeamScreen extends StatefulWidget {
 }
 
 class _MyTeamScreenState extends State<MyTeamScreen> {
+  DateTime _selectedDate = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
   static const Map<String, String> _rawToDisplay = {
     'KIA': 'KIA 타이거즈', 'HT': 'KIA 타이거즈',
     '롯데': '롯데 자이언츠', 'LT': '롯데 자이언츠',
@@ -42,6 +45,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
   String? _selectedTeam;
   List<Map<String, dynamic>> _allGames = [];
   final Map<String, Map<String, String>> _teamStats = {};
+  final Map<DateTime, List<Map<String, dynamic>>> _eventsByDay = {};
   bool _loading = true;
 
   @override
@@ -108,6 +112,11 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
       });
     }
     _allGames = games;
+    _eventsByDay.clear();
+    for (final game in _allGames) {
+      final date = DateTime(game['date'].year, game['date'].month, game['date'].day);
+      _eventsByDay.putIfAbsent(date, () => []).add(game);
+    }
   }
 
   List<String> _parseCsv(String line) {
@@ -126,6 +135,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
     }
     res.add(sb.toString().trim());
     return res;
+
   }
 
   List<Map<String, dynamic>> _getGamesFor(String team, DateTimeRange range) {
@@ -148,13 +158,15 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
 
     final now = DateTime.now();
     final todayGames = _getGamesFor(selectedTeam ?? '', DateTimeRange(start: now, end: now.add(const Duration(days: 1))));
-    final upcomingGames = _getGamesFor(selectedTeam ?? '', DateTimeRange(start: now.add(const Duration(days: 1)), end: now.add(const Duration(days: 7))));
+    final upcomingGames = _getGamesFor(selectedTeam ?? '', DateTimeRange(start: now.add(const Duration(days: 1)), end: now.add(const Duration(days: 15))));
+    final totalGames = _getGamesFor(selectedTeam ?? '', DateTimeRange(start: DateTime(2025, 1, 1) , end: DateTime(2025, 12, 31)));
 
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: selectedTeam != null
             ? Padding(
@@ -622,6 +634,151 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('일정 캘린더', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: secondaryColor, // 원하는 테두리 색상
+                      width: 4,
+                    ),
+                  ),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text('홈', style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: secondaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text('원정', style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 12),
+                          ],
+                        ),
+                        TableCalendar(
+                          firstDay: DateTime.utc(2025, 1, 1),
+                          lastDay: DateTime.utc(2025, 12, 31),
+                          focusedDay: _focusedDay,
+                          selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
+
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedDate = DateTime.now();
+                              _focusedDay = focusedDay; // 선택 시에도 갱신
+                            });
+                          },
+                          onPageChanged: (newFocusedDay) {
+                            setState(() {
+                              _focusedDay = newFocusedDay; // ✅ 여기서 반드시 갱신해야 달력이 넘어감
+                            });
+                          },
+
+                          eventLoader: (day) {
+                            final normalized = DateTime(day.year, day.month, day.day);
+                            final selectedTeam = context.read<MyTeamProvider>().myTeam;
+                            final allEvents = _eventsByDay[normalized] ?? [];
+
+                            return allEvents.where((game) =>
+                            game['home'] == selectedTeam || game['away'] == selectedTeam
+                            ).toList();
+                          },
+
+                          calendarBuilders: CalendarBuilders(
+                            markerBuilder: (context, date, events) {
+                              if (events.isEmpty) return const SizedBox.shrink();
+
+                              final isOutsideMonth = date.month != _focusedDay.month || date.year != _focusedDay.year;
+
+                              return Positioned(
+                                bottom: 2,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(events.length, (index) {
+                                    final game = events[index] as Map<String, dynamic>;
+                                    final isMyTeamHome = game['home'] == myTeam;
+
+                                    final color = isOutsideMonth
+                                        ? primaryColor.withAlpha(70)
+                                        : (isMyTeamHome ? primaryColor : secondaryColor);
+
+                                    return Container(
+                                      width: 6,
+                                      height: 6,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              );
+                            },
+                          ),
+                          locale: 'ko_KR',
+                          calendarStyle: CalendarStyle(
+                            defaultTextStyle: TextStyle(color: primaryColor),
+                            weekendTextStyle: TextStyle(color: primaryColor),
+                            outsideTextStyle: TextStyle(color: primaryColor.withOpacity(0.4)),
+                            cellMargin: const EdgeInsets.all(9), // 기본은 6
+                            cellPadding: const EdgeInsets.all(2),
+                            todayDecoration: BoxDecoration(
+                              color: primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            selectedDecoration: BoxDecoration(
+                              color: primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+
+                          daysOfWeekStyle: DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(color: primaryColor),
+                            weekendStyle: TextStyle(color: primaryColor),
+                          ),
+
+                          headerStyle: HeaderStyle(
+                            titleCentered: true,
+                            formatButtonVisible: false,
+                            titleTextStyle: TextStyle(
+                              color: primaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor),
+                            rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor),
+                          ),
+                        )
+                      ]
+                  )
+
+                ),
+                const SizedBox(height:16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ElevatedButton(

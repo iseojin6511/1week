@@ -165,7 +165,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     _selectedDate = _selectedDate.subtract(const Duration(days: 1));
                   }),
                 ),
-
                 // 가운데: 날짜 + 요일 + 달력 버튼
                 GestureDetector(
                   onTap: () async {
@@ -175,6 +174,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2026),
                       locale: const Locale('ko'),
+                      builder: (BuildContext context, Widget? child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: primaryColor,            // 상단 색상 및 선택된 날짜 배경색
+                              onPrimary: Colors.white,          // 선택된 날짜 텍스트 색상
+                              onSurface: Colors.black87,        // 기본 날짜 텍스트 색상
+                            ),
+                            textButtonTheme: TextButtonThemeData(
+                              style: TextButton.styleFrom(
+                                foregroundColor: primaryColor,  // 취소, 확인 버튼 색상
+                              ),
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
                     );
                     if (picked != null && picked != _selectedDate) {
                       setState(() {

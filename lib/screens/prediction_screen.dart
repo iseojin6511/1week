@@ -386,8 +386,6 @@ class _PredictionScreenState extends State<PredictionScreen> {
                         children: [
                           // 예상 득점과 승률 바
 
-
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [

@@ -3,19 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_screen.dart';
 import 'providers/my_team_provider.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   final myTeamProvider = MyTeamProvider();
   await myTeamProvider.loadMyTeam(); // SharedPreferences에서 초기값 불러오기
-
   runApp(
     ChangeNotifierProvider.value(
       value: myTeamProvider,
       child: const BaseballApp(),
     ),
   );
+  FlutterNativeSplash.remove();
 }
 
 class BaseballApp extends StatelessWidget {

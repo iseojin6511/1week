@@ -20,6 +20,25 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_native_splash: ^2.4.0
+  flutter_launcher_icons: ^0.13.1
+  table_calendar: ^3.0.9
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/PitchUP_Logo.png"
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: "assets/PitchUP_Logo.png"
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
+  android : true
+  ios : true
+
+
 flutter_localizations:
   sdk: flutter
 
@@ -42,4 +61,5 @@ flutter:
     - assets/image/한화.png
     - assets/image/두산.png
     - assets/logo.png
+    - assets/PitchUP_Logo.png
     - assets/data/kbo_win_lose.csv
